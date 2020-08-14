@@ -1,0 +1,432 @@
+package javaapplication1;
+
+/*
+ * @author viraj
+ * @author hardik
+ * @author shivali
+ 
+ */
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Vector;
+
+public class Utility
+{
+    public static void printAttributes(Main obj)
+    {
+        obj.jTextArea1.setText(null);
+        for(String attr : obj.attribute)
+        {
+            obj.jTextArea1.append(attr + "\n");
+        }
+    }
+    
+    public static void printDependencies(Main obj)
+    {
+        Utility.updateDependency(obj);
+        obj.jTextArea2.setText(null);
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            String l = "";
+            String r = "";
+            for(String attr : dep.get(0))
+            {
+                if(l.isEmpty())
+                {
+                    l += attr;
+                }
+                else
+                {
+                    l += ", " + attr;
+                }
+            }
+            for(String attr : dep.get(1))
+            {
+                if(r.isEmpty())
+                {
+                    r += attr;
+                }
+                else
+                {
+                    r += ", " + attr;
+                }
+            }
+            String s = l + " --> " + r;
+            obj.jTextArea2.append(s + "\n");
+        }
+    }
+    
+    public static void printKeys(Main obj)
+    {
+        Utility.getClosureAll(obj);
+        Utility.getKeys(obj);
+        obj.jTextArea4.setText(null);
+        for(ArrayList<String> key : obj.keys)
+        {
+            obj.jTextArea4.append(key.toString() + "\n");
+        }
+    }
+    
+    public static void printNormalForm(Main obj)
+    {
+        Utility.getNormalFormAll(obj);
+        int min = 4;
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            int x = Integer.parseInt(dep.get(2).get(0));
+            if(x < min)
+            {
+                min = x;
+            }
+        }
+        switch(min)
+        {
+            case 1:
+                obj.jLabel7.setText("1st");
+                break;
+            case 2:
+                obj.jLabel7.setText("2nd");
+                break;
+            case 3:
+                obj.jLabel7.setText("3rd");
+                break;
+            case 4:
+                obj.jLabel7.setText("BCNF");
+                break;
+        }
+    }
+    
+    public static void printDecomposition(Main obj)
+    {
+        if(obj.jButton4.getText().equals("Normalize"))
+        {
+            obj.jTextArea3.setText(null);
+        }
+        int min = 4;
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            int x = Integer.parseInt(dep.get(2).get(0));
+            if(x < min)
+            {
+                min = x;
+            }
+        }
+        switch(min)
+        {
+            case 1:
+                obj.jTextArea3.append("Decomposing to 2nd NF:\n");
+                Utility.decompose(obj, 1);
+                break;
+            case 2:
+                if(obj.jButton4.getText().equals("Normalize further"))
+                {
+                    obj.jTextArea3.append("\n\n");
+                    obj.jTextArea3.append("Decomposing last relation to 3rd NF:\n");
+                }
+                else
+                {
+                    obj.jTextArea3.append("Decomposing to 3rd NF:\n");
+                }
+                Utility.decompose(obj, 2);
+                break;
+            case 3:
+                if(obj.jButton4.getText().equals("Normalize further"))
+                {
+                    obj.jTextArea3.append("\n\n");
+                    obj.jTextArea3.append("Decomposing last relation to BCNF:\n");
+                }
+                else
+                {
+                    obj.jTextArea3.append("Decomposing to BCNF:\n");
+                }
+                Utility.decompose(obj, 3);
+                obj.jButton4.setVisible(false);
+                break;
+            default:
+                if(obj.jButton4.getText().equals("Normalize further"))
+                {
+                    obj.jTextArea3.append("\n\n");
+                    obj.jTextArea3.append("No further decomposition required");
+                }
+                else
+                {
+                    obj.jTextArea3.append("No decomposition required");
+                }
+                obj.jButton4.setVisible(false);
+                break;
+        }
+    }
+    
+    private static void updateDependency(Main obj)
+    {
+        Vector<Vector<ArrayList<String>>> val = new Vector<>();
+        outer: for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            for(String leftattr : dep.get(0))
+            {
+                if(!obj.attribute.contains(leftattr))
+                {
+                    if(!val.contains(dep))
+                    {
+                        val.add(dep);
+                    }
+                    continue outer;
+                }
+            }
+        }
+        obj.dependency.removeAll(val);
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            ArrayList<String> v = new ArrayList<>();
+            for(String rightattr : dep.get(1))
+            {
+                if(!obj.attribute.contains(rightattr))
+                {
+                    if(!v.contains(rightattr))
+                    {
+                        v.add(rightattr);
+                    }
+                }
+            }
+            dep.get(1).removeAll(v);
+        }
+        val.clear();
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            if(dep.get(1).isEmpty())
+            {
+                val.add(dep);
+            }
+        }
+        obj.dependency.removeAll(val);
+    }
+        
+    private static ArrayList<String> getDependent(Main obj, ArrayList<String> attr)
+    {
+        ArrayList<String> dependent = new ArrayList<>();
+        Vector<Integer> val = new Vector<>();
+        for(String att : attr)
+        {
+            val.add(obj.attribute.indexOf(att));
+        }
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            if(attr.containsAll(dep.get(0)))
+            {
+                for(String rightattr : dep.get(1))
+                {
+                    if(!val.contains(obj.attribute.indexOf(rightattr)))
+                    {
+                        val.add(obj.attribute.indexOf(rightattr));
+                    }
+                }
+            }
+        }
+        Collections.sort(val);
+        for(int i : val)
+        {
+            dependent.add(obj.attribute.get(i));
+        }
+        return dependent;
+    }
+    
+    private static ArrayList<String> getClosureSet(Main obj, ArrayList<String> attr)
+    {
+        ArrayList<String> dependent = new ArrayList<>();
+        ArrayList<String> newdep = Utility.getDependent(obj, attr);
+        do
+        {
+            dependent = newdep;
+            newdep = Utility.getDependent(obj, dependent);
+        } while(!dependent.containsAll(newdep));
+        return dependent;
+    }
+    
+    private static void getClosureAll(Main obj)
+    {
+        obj.closure.clear();
+        int attrsize = obj.attribute.size();
+        int max = 1 << attrsize;
+        for(int i = 1; i < max; i++)
+        {
+            ArrayList<String> attr = new ArrayList<>();
+            for(int j = 0; j < attrsize; j++)
+            {
+                if(((i >> j) & 1) == 1)
+                {
+                    attr.add(obj.attribute.get(j));
+                }
+            }
+            ArrayList<String> close = Utility.getClosureSet(obj, attr);
+            Vector<ArrayList<String>> cl = new Vector<>();
+            cl.add(attr);
+            cl.add(close);
+            obj.closure.add(cl);
+        }
+    }
+    
+    private static void getKeys(Main obj)
+    {
+        obj.keys.clear();
+        outer: for(Vector<ArrayList<String>> close : obj.closure)
+        {
+            if(close.get(1).containsAll(obj.attribute))
+            {
+                ArrayList<String> attr = close.get(0);
+                int size = attr.size();
+                int max = 1 << size;
+                for(int i = 1; i < max; i++)
+                {
+                    ArrayList<String> at = new ArrayList<>();
+                    for(int j = 0; j < size; j++)
+                    {
+                        if(((i >> j) & 1) == 1)
+                        {
+                            at.add(attr.get(j));
+                        }
+                    }
+                    if(obj.keys.contains(at))
+                    {
+                        continue outer;
+                    }
+                }
+                obj.keys.add(attr);
+            }
+        }
+    }
+    
+    private static boolean isSecondForm(Main obj, Vector<ArrayList<String>> dep)
+    {
+        ArrayList<String> left = dep.get(0);
+        ArrayList<String> right = dep.get(1);
+        boolean flag = false;
+        outer : for(String rightattr : right)
+        {
+            for(ArrayList<String> key : obj.keys)
+            {
+                if(key.contains(rightattr))
+                {
+                    continue outer;
+                }
+            }
+            flag = true;
+            break;
+        }
+        if(flag)
+        {
+            for(ArrayList<String> key : obj.keys)
+            {
+                if(key.containsAll(left) && !left.containsAll(key))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    private static boolean isThirdForm(Main obj, Vector<ArrayList<String>> dep)
+    {
+        ArrayList<String> left = dep.get(0);
+        ArrayList<String> right = dep.get(1);
+        for(ArrayList<String> key : obj.keys)
+        {
+            if(left.containsAll(key))
+            {
+                return true;
+            }
+        }
+        outer : for(String rightattr : right)
+        {
+            for(ArrayList<String> key : obj.keys)
+            {
+                if(key.contains(rightattr))
+                {
+                    continue outer;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+    
+    private static boolean isBCNF(Main obj, Vector<ArrayList<String>> dep)
+    {
+        ArrayList<String> left = dep.get(0);
+        for(ArrayList<String> key : obj.keys)
+        {
+            if(left.containsAll(key))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private static void getNormalFormAll(Main obj)
+    {
+        for(Vector<ArrayList<String>> dep : obj.dependency)
+        {
+            ArrayList<String> nf = new ArrayList<>();
+            if(!Utility.isSecondForm(obj, dep))
+            {
+                nf.add("1");
+            }
+            else if(!Utility.isThirdForm(obj, dep))
+            {
+                nf.add("2");
+            }
+            else if(!Utility.isBCNF(obj, dep))
+            {
+                nf.add("3");
+            }
+            else
+            {
+                nf.add("4");
+            }
+            while(dep.size()>2)
+            {
+                dep.remove(2);
+            }
+            dep.add(nf);
+        }
+    }
+    
+    private static void decompose(Main obj, int nf)
+    {
+        boolean flag;
+        int i = 1;
+        do
+        {
+            flag = false;
+            ArrayList<String> newTable = new ArrayList<>();
+            ArrayList<String> key = null;
+            for(Vector<ArrayList<String>> dep : obj.dependency)
+            {
+                if(Integer.parseInt(dep.get(2).get(0)) <= nf)
+                {
+                    key = dep.get(0);
+                    newTable.addAll(dep.get(0));
+                    newTable.addAll(dep.get(1));
+                    obj.attribute.removeAll(dep.get(1));
+                    flag = true;
+                    break;
+                }
+            }
+            if(flag)
+            {
+                obj.jTextArea3.append("Relation " + (i++) + newTable.toString() + "        Key: " + key.toString() + "\n");
+                Utility.updateDependency(obj);
+                Utility.getClosureAll(obj);
+                Utility.getKeys(obj);
+                Utility.getNormalFormAll(obj);
+            }
+        } while(flag);
+        if(!obj.attribute.isEmpty())
+        {
+            String keys = obj.keys.toString();
+            obj.jTextArea3.append("Relation " + (i++) + obj.attribute.toString() + "        Key: " + keys.substring(1, keys.length()-1));
+        }
+    }
+}
